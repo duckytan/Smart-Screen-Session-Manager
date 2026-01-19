@@ -1,0 +1,5 @@
+#!/bin/bash
+# screen-selector.sh 备份文件
+
+# 最早的简单版本
+screen -list
