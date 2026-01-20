@@ -86,6 +86,9 @@ show_header() {
     echo -e "${CYAN}║${WHITE}                Smart Screen Session Manager v2.0           ${CYAN}║${NC}"
     echo -e "${CYAN}╠════════════════════════════════════════════════════════════╣${NC}"
     echo -e "${CYAN}║${NC}  智能Screen会话管理器 - 预设会话、自动创建、SSH恢复         ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${WHITE}  版权所有 © 2026 Ducky | MIT License | ducky@live.com   ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -121,10 +124,6 @@ show_sessions() {
     echo -e "  [${GREEN}u${NC}] ${ICON_UNINSTALL} 自动卸载（删除自启动配置）"
     echo -e "  [${GREEN}h${NC}] ${ICON_HELP} 帮助信息"
     echo -e "  [${GREEN}q${NC}] ${ICON_QUIT} 退出"
-    echo ""
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BLUE}│${NC} ${WHITE}版权所有 © 2026 Ducky | MIT License | Email: ducky@live.com${NC} ${BLUE}│${NC}"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 }
 
