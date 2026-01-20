@@ -1,5 +1,11 @@
 # Smart Screen Session Manager v2.0
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-2.0-blue.svg)](https://github.com/yourusername/smart-screen)
+[![Author](https://img.shields.io/badge/author-Ducky-green.svg)](mailto:ducky@live.com)
+
+**版权所有 © 2026 Ducky | MIT License**
+
 ## 📋 项目简介
 
 **Smart Screen Session Manager** 是一个智能的 Screen 会话管理工具，专为解决 SSH 登录后会话丢失问题而设计。它提供了预设会话、自动创建/连接、防重复机制等功能，让您的多任务管理工作更加便捷高效。
@@ -231,15 +237,17 @@ source ~/.bashrc
 
 ### 核心文件
 - `smart-screen.sh` - 主脚本文件（会话管理器核心）
-- `quick_setup.sh` - 一键安装配置脚本（推荐）
-- `test_screen_manager.sh` - 功能测试脚本
 - `README.md` - 本文件（完整使用手册）
+- `LICENSE` - MIT开源许可证文件
+- `.screenrc` - Screen配置文件
+- `.screenrc.ps1` - PS1自动加载配置
 
-### 详细文档
-- `AUTO_START_SETUP.md` - SSH自动启动详细配置指南
-- `AUTO_START_OPTIONS.md` - 3种自动启动方案对比分析
-- `PROJECT_SUMMARY.md` - 项目完成总结报告
-- `PROJECT_STRUCTURE.md` - 项目结构说明
+### 配置文件
+- `.shellcheckrc` - ShellCheck代码质量检查配置
+
+### 历史文件（temp/目录）
+- `temp/legacy_scripts/` - 历史脚本文件（18个）
+- `temp/legacy_docs/` - 历史文档文件（38个）
 
 ### 备份文件（bak/目录）
 - `screen-selector.sh` - 原版脚本备份
@@ -471,7 +479,21 @@ bash -n /root/smart-screen.sh
 
 ## 📄 许可证
 
-本项目采用 MIT 许可证，详见 LICENSE 文件。
+本项目采用 **MIT License** 开源协议。
+
+- **作者**: Ducky (ducky@live.com)
+- **版权所有**: © 2026 Ducky
+- **许可证**: MIT License
+- **详细条款**: 请查看 [LICENSE](LICENSE) 文件
+
+### MIT 许可证要点
+- ✅ 允许自由使用、修改和分发
+- ✅ 允许商业使用
+- ✅ 允许私人使用
+- ✅ 无传染性（无需开源衍生作品）
+- ⚠️ 需要保留版权声明和许可证声明
+
+更多信息请查看 [LICENSE](LICENSE) 文件。
 
 ## 🙏 致谢
 
@@ -483,14 +505,14 @@ bash -n /root/smart-screen.sh
 
 ## 📖 快速索引
 
-| 需求 | 对应文档 | 说明 |
+| 需求 | 对应文件 | 说明 |
 |------|----------|------|
-| 🚀 快速安装 | `./quick_setup.sh` | 一键安装配置 |
+| 🚀 快速开始 | `smart-screen.sh` | 运行主脚本开始使用 |
 | 📚 完整使用手册 | `README.md` | 本文档，涵盖所有功能 |
-| ⚙️ 自动启动配置 | `AUTO_START_SETUP.md` | 详细配置指南 |
-| 📋 启动方案选择 | `AUTO_START_OPTIONS.md` | 3种方案对比分析 |
-| 🔍 故障排除 | `./test_screen_manager.sh` | 系统检测诊断 |
-| 📊 项目总结 | `PROJECT_SUMMARY.md` | 完整项目报告 |
-| 📄 项目结构 | `PROJECT_STRUCTURE.md` | 文件结构说明 |
+| 📄 开源许可证 | `LICENSE` | MIT许可证全文 |
+| ⚙️ Screen配置 | `.screenrc` | Screen会话配置 |
+| 🎨 提示符配置 | `.screenrc.ps1` | 简洁提示符配置 |
+| 🔍 代码质量 | `.shellcheckrc` | ShellCheck检查配置 |
+| 📊 项目总结 | `temp/legacy_docs/` | 查看历史文档目录 |
 
-如有问题，请查看对应文档或提交 Issue。
+**如有问题，请查看文档或提交 Issue。**

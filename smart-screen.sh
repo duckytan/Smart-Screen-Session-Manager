@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 #
-# 脚本名称：自动修复的脚本
-# 描述：已应用Bash最佳实践
-# 作者：Smart Screen Team
-# 版本：1.0
+# Smart Screen Session Manager v2.0
+# Copyright (c) 2026 Ducky
+# Licensed under the MIT License
+# Email: ducky@live.com
+#
+# 简洁高效的Screen会话管理工具
+# 支持多用户协作、预设会话、简洁提示符
 #
 set -euo pipefail
 
