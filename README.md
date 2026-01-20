@@ -229,27 +229,28 @@ Smart Screen Session Manager 提供了简洁的提示符配置，告别冗长的
 
 提示符配置在脚本自动安装时自动完成：
 
-1. **自动创建** `.screenrc.ps1` 文件
-2. **自动修改** `~/.bashrc` 添加自动加载
-3. **自动设置** `.screenrc` 配置
+1. **自动部署** `config/.screenrc` → `~/.screenrc`
+2. **自动部署** `config/.screenrc.ps1` → `~/.screenrc.ps1`
+3. **自动修改** `~/.bashrc` 添加自动加载
+4. **自动设置** `~/.screenrc` 配置
 
 ### 🔧 手动配置
 
-如需手动配置：
+配置文件已自动部署到用户目录，无需手动配置。如需修改：
 
 ```bash
-# 运行配置脚本
-./setup_screen_prompt.sh
+# 编辑配置文件
+nano ~/.screenrc.ps1
+# 或
+nano /root/smart-screen/config/.screenrc.ps1
 
-# 或手动编辑
-# 1. 编辑 ~/.screenrc.ps1
-# 2. 添加到 ~/.bashrc
-# 3. 运行 source ~/.bashrc
+# 重新加载配置
+source ~/.bashrc
 ```
 
 ### 🎨 自定义提示符
 
-可以修改 `.screenrc.ps1` 文件自定义提示符格式：
+可以修改 `config/.screenrc.ps1` 文件自定义提示符格式：
 
 ```bash
 # 格式：[会话名称] 用户@主机$
@@ -391,11 +392,12 @@ export PS1="\\[\\e]0;[\\$SESSION_NAME] \\u@\\h:\\w\\a\\]\\\\$ "
 - `smart-screen.sh` - 主脚本文件（会话管理器核心）
 - `README.md` - 本文件（完整使用手册）
 - `LICENSE` - MIT开源许可证文件
-- `.screenrc` - Screen配置文件
-- `.screenrc.ps1` - PS1自动加载配置
 
-### 配置文件
-- `.shellcheckrc` - ShellCheck代码质量检查配置
+### 配置文件（config/目录）
+- `config/.screenrc` - Screen配置文件
+- `config/.screenrc.ps1` - PS1自动加载配置
+- `config/.shellcheckrc` - ShellCheck代码质量检查配置
+- `config/README.md` - 配置文件详细说明
 
 ### 历史文件（temp/目录）
 - `temp/legacy_scripts/` - 历史脚本文件（18个）
@@ -405,6 +407,13 @@ export PS1="\\[\\e]0;[\\$SESSION_NAME] \\u@\\h:\\w\\a\\]\\\\$ "
 - `screen-selector.sh` - 原版脚本备份
 - `screen-selector.sh.bak` - 早期版本备份
 - `clean-duplicate-screens.sh` - 重复清理脚本备份
+
+### 符号链接（用户目录）
+- `~/.screenrc` → `config/.screenrc`
+- `~/.screenrc.ps1` → `config/.screenrc.ps1`
+- `~/.shellcheckrc` → `config/.shellcheckrc`
+
+**说明**: 配置文件已创建符号链接到用户目录，可直接使用，无需手动复制。
 
 ## 🔍 使用场景
 
@@ -663,9 +672,10 @@ bash -n /root/smart-screen.sh
 | 🚀 快速开始 | `smart-screen.sh` | 运行主脚本开始使用 |
 | 📚 完整使用手册 | `README.md` | 本文档，涵盖所有功能 |
 | 📄 开源许可证 | `LICENSE` | MIT许可证全文 |
-| ⚙️ Screen配置 | `.screenrc` | Screen会话配置 |
-| 🎨 提示符配置 | `.screenrc.ps1` | 简洁提示符配置 |
-| 🔍 代码质量 | `.shellcheckrc` | ShellCheck检查配置 |
+| ⚙️ Screen配置 | `config/.screenrc` | Screen会话配置 |
+| 🎨 提示符配置 | `config/.screenrc.ps1` | 简洁提示符配置 |
+| 🔍 代码质量 | `config/.shellcheckrc` | ShellCheck检查配置 |
+| 📊 配置文件说明 | `config/README.md` | 配置文件详细说明 |
 | 📊 项目总结 | `temp/legacy_docs/` | 查看历史文档目录 |
 
 **如有问题，请查看文档或提交 Issue。**
