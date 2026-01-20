@@ -1,8 +1,42 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# 脚本名称：自动修复的脚本
+# 描述：已应用Bash最佳实践
+# 作者：Smart Screen Team
+# 版本：1.0
+#
+set -euo pipefail
+
+################################################################################
+# 错误处理函数
+################################################################################
+
+error() {
+    echo "[ERROR] $*" >&2
+    exit 1
+}
+
+fatal() {
+    echo "[FATAL] $*" >&2
+    local frame=0
+    while caller $frame; do
+        echo "  Frame $frame: $(caller $frame)" >&2
+        ((frame++))
+    done
+    exit 1
+}
+
+cleanup() {
+    echo "执行清理操作..."
+}
+
+trap cleanup EXIT
+trap 'error "脚本被中断"' INT
+trap 'error "收到终止信号"' TERM
 
 ################################################################################
 # Smart Screen Session Manager v2.0
-# 智能 Screen 会话管理器 - 主脚本
+# 智能 Screen 会话管理器 - 支持多用户协作的主脚本
 ################################################################################
 
 # 颜色定义
@@ -88,6 +122,22 @@ show_sessions() {
 }
 
 ################################################################################
+# 检查并启用多用户模式
+################################################################################
+ensure_multiuser_mode() {
+    local session_name="$1"
+
+    # 启用多用户模式
+    screen -S "$session_name" -X multiuser on 2>/dev/null || true
+
+    # 获取当前用户名
+    local current_user=$(whoami)
+
+    # 为当前用户添加权限
+    screen -S "$session_name" -X acladd "$current_user" 2>/dev/null || true
+}
+
+################################################################################
 # 连接到会话（不存在则创建）
 ################################################################################
 connect_session() {
@@ -96,10 +146,27 @@ connect_session() {
     # 检查会话是否已存在
     if screen -list | grep -q "$session_name"; then
         echo -e "${GREEN}连接到现有会话: $session_name${NC}"
-        exec screen -r "$session_name"
+        echo -e "${BLUE}💡 使用 screen -xR 支持多用户协作${NC}"
+
+        # 确保多用户模式已启用
+        ensure_multiuser_mode "$session_name"
+
+        exec screen -xR "$session_name"
     else
         echo -e "${CYAN}创建新会话: $session_name${NC}"
-        exec screen -S "$session_name"
+        echo -e "${BLUE}💡 自动启用多用户模式，支持协作${NC}"
+
+        # 创建会话并分离
+        screen -S "$session_name" -d -m bash
+
+        # 等待会话创建
+        sleep 1
+
+        # 启用多用户模式
+        ensure_multiuser_mode "$session_name"
+
+        # 连接会话
+        exec screen -xR "$session_name"
     fi
 }
 
@@ -128,7 +195,13 @@ show_all_sessions() {
 
     if [ "$choice" -ge 1 ] && [ "$choice" -lt $count ]; then
         local selected_session=$(echo "$sessions" | sed -n "${choice}p")
-        exec screen -r "$selected_session"
+        echo -e "${GREEN}连接到会话: $selected_session${NC}"
+        echo -e "${BLUE}💡 使用 screen -xR 支持多用户协作${NC}"
+
+        # 确保多用户模式已启用
+        ensure_multiuser_mode "$selected_session"
+
+        exec screen -xR "$selected_session"
     fi
 }
 
@@ -207,6 +280,7 @@ show_help() {
     echo -e "${CYAN}║${NC}  • 按 Ctrl+A 然后按 D 可从screen会话返回                   ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  • 预设会话会自动创建或连接，无需担心重复                 ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  • 所有screen会话会在后台持续运行                         ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  • 支持多用户协作！多个人可以同时操作同一个会话           ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  • 首次使用建议运行 'i' 进行自动安装                      ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"

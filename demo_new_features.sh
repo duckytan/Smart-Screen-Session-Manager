@@ -1,38 +1,37 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# 脚本名称：自动修复的脚本
+# 描述：已应用Bash最佳实践
+# 作者：Smart Screen Team
+# 版本：1.0
+#
+set -euo pipefail
 
-echo "=================================="
-echo "Smart Screen Session Manager v2.0"
-echo "新功能演示"
-echo "=================================="
-echo ""
+################################################################################
+# 错误处理函数
+################################################################################
 
-echo "✅ 已成功整合 quick_setup.sh 功能到主脚本"
-echo ""
-echo "📋 新增菜单选项："
-echo "  [i] 🚀 自动安装（安装依赖+配置自启动）"
-echo "  [u] 🛑 自动卸载（删除自启动配置）"
-echo ""
+error() {
+    echo "[ERROR] $*" >&2
+    exit 1
+}
 
-echo "📖 使用方法："
-echo "  1. 运行: ./smart-screen.sh"
-echo "  2. 选择 i → 自动安装"
-echo "  3. 选择 u → 自动卸载"
-echo ""
+fatal() {
+    echo "[FATAL] $*" >&2
+    local frame=0
+    while caller $frame; do
+        echo "  Frame $frame: $(caller $frame)" >&2
+        ((frame++))
+    done
+    exit 1
+}
 
-echo "✨ 特性："
-echo "  • 智能检测现有配置"
-echo "  • 自动安装 screen 依赖"
-echo "  • 支持多种 Linux 发行版"
-echo "  • 彩色界面，操作简单"
-echo "  • 安全确认，避免误操作"
-echo ""
+cleanup() {
+    echo "执行清理操作..."
+}
 
-echo "📚 文档已更新："
-echo "  • README.md 增加了新功能说明"
-echo "  • 添加了完整的安装/卸载流程"
-echo "  • 更新了快捷键参考"
-echo ""
+trap cleanup EXIT
+trap 'error "脚本被中断"' INT
+trap 'error "收到终止信号"' TERM
 
-echo "=================================="
-echo "演示完成！"
-echo "=================================="
+################################################################################
