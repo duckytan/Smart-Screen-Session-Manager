@@ -1,180 +1,101 @@
 ################################################################################
-# Smart Screen Session Manager - 推荐配置文件
-# 基于 Screen 完整使用指南.md 中的最佳实践
+# Smart Screen Session Manager v2.0 - Screen 配置文件
+# 简化提示符：只显示 [会话名称]用户@主机
+# 移除所有多余的screen标识和路径信息
 ################################################################################
 
-# ==================== 基础设置 ====================
+# ================================
+# 基础配置
+# ================================
 
-# 禁用启动消息
+# 启用多用户模式
+multiuser on
+
+# 启用视觉铃声
+vbell on
+vbell_msg "bell"
+
+# 启动时不显示欢迎信息
 startup_message off
 
-# 自动分离会话（网络断开时自动detach）
-autodetach on
+# 禁用自动回绕
+defwrap on
 
-# 设置回滚缓冲区大小（增加到10000行）
+# 设置屏幕缓冲行数
 defscrollback 10000
 
-# 启用UTF-8支持
+# 启用UTF-8
 defutf8 on
 
-# 设置默认shell
-shell -$SHELL
+# ================================
+# 简洁提示符配置
+# ================================
 
-# ==================== 状态栏设置 ====================
-
-# 总是显示状态栏
+# 设置简洁的硬状态栏
+# 只显示会话名称、用户和主机
 hardstatus alwayslastline
+hardstatus string '%{= kG}[%{G}%S%{g}]%{W} %H %{g}%'
 
-# 详细状态栏格式 - 显示主机名、窗口列表、日期时间
-# 格式：[主机名][窗口列表][日期时间]
-hardstatus string '%{= kW}[ %{G}%H %{g}][%= %{= kw}%?%-Lw%?%{r}(%{W}%n*%f%t%?(%u)%?%{r})%{w}%?%+Lw%?%?%= %{g}][%{B} %d/%m %{W}%c %{g}]'
+# 禁用默认硬状态栏标题
+defhstatus ""
 
-# 备用简化状态栏（如果需要更简洁的显示）
-# hardstatus string '%{= kG}[ %{G}%H %{g}][%= %{= kw}%{=%}%?%-Lw%?%{r}%n*%f%t%?(%u)%?%{w}%?%+Lw%?%{=}%?%= %{g}][%{B} %m/%d %{W}%c %{g}]'
+# 设置窗口标题格式
+shelltitle "$ |"
 
-# ==================== 视觉设置 ====================
+# 禁用自动标题设置
+termcapinfo screen* 'hs:ts=\E]0;:fs=\007:ds=\E]0;screen\007'
 
-# 开启256色支持
-term xterm-256color
+# ================================
+# 快捷键配置
+# ================================
 
-# 启用鼠标滚动支持
+# 窗口切换快捷键
+bindkey -k k9 select 0
+bindkey -k k; select 1
+bindkey -k F1 select 0
+bindkey -k F2 select 1
+bindkey -k F3 select 2
+bindkey -k F4 select 3
+bindkey -k F5 select 4
+bindkey -k F6 select 5
+bindkey -k F7 select 6
+bindkey -k F8 select 7
+bindkey -k F9 select 8
+bindkey -k F10 select 9
+
+# 分离快捷键
+bind s detach
+
+# 退出快捷键
+bind k kill
+bind ^k kill
+bind \\ quit
+
+# 重新连接快捷键
+bind r screen -dRR
+
+# ================================
+# 状态栏配置
+# ================================
+
+# 状态栏已在上面配置为简洁格式
+# 如需详细状态栏，取消下面注释并注释上面配置
+# hardstatus alwayslastline
+# hardstatus string '%{= kG}[ %{G}%H %{g}][%= %{= kw}%?%-Lw%?%{r}(%{W}%n*%f%t%?(%u)%?%{r})%{w}%?%+Lw%?%?%= %{g}][%{B} %m-%d %{W}%c %{g}]'
+
+# ================================
+# 终端优化
+# ================================
+
+# 启用鼠标支持
 termcapinfo xterm* ti@:te@
 
-# 设置命令行转义字符
-vbell on
-vbell_msg "Bell in window %n"
-
-# 设置窗口标题自动命名
-shelltitle 'bash|terminal'
-
-# ==================== 快捷键设置 ====================
-
-# 设置escape键（默认为Ctrl+A，保持标准）
-# escape ^Aa
-
-# 窗口编号从1开始（而不是0）
-bind c screen 1
-bind ^c screen 1
-bind 0 select 10
-
-# 绑定窗口切换
-bind j focus down
-bind k focus up
-
-# 绑定分割快捷键
-bind s split
-bind v split -v
-
-# 关闭窗口快捷键
-bind k screen -X kill
-bind ^k screen -X kill
-bind K screen -X quit
-
-# ==================== 窗口监视 ====================
-
-# 窗口活动监视
-activity "Activity in window %n"
-defmonitor on
-
-# 静默监视（30秒无活动时通知）
-silence 30
-
-# ==================== 日志设置 ====================
-
-# 默认开启日志记录
+# 启用日志功能
 deflog on
+logfile /tmp/screen-%n.log
 
-# 日志文件路径（每个窗口一个日志文件）
-logfile ~/screenlog-%n.log
+# 设置默认终端类型
+term screen-256color
 
-# 日志时间戳（每60秒写入一次时间戳，减少I/O）
-logtstamp after 60
-logtstamp string "%n: %t-%d/%m/%y %c:%s "
-
-# ==================== 复制模式设置 ====================
-
-# 设置复制模式的光标样式（绿色）
-# cursorcolor "#00ff00"
-
-# ==================== 多用户设置 ====================
-
-# 默认启用多用户模式（如果需要共享会话）
-# multiuser on
-
-# 设置socket权限（可选，根据需要调整）
-# setgid screen
-# setuid screen
-
-# ==================== 性能优化 ====================
-
-# 减少状态栏刷新频率
-# （已在hardstatus string中优化）
-
-# 减少日志I/O
-# （已在logtstamp中配置）
-
-# 减少窗口活动检测开销
-# （已在silence中配置30秒间隔）
-
-# ==================== 自动启动窗口 ====================
-
-# 取消注释以自动启动窗口（可选）
-# screen -t "Shell" bash
-# screen -t "Monitor" htop
-# screen -t "Logs" tail -f /var/log/messages
-
-# ==================== 编码设置 ====================
-
-# 设置编码
-encoding UTF-8 zh_CN.UTF-8
-
-# ==================== 其他实用设置 ====================
-
-# 窗口自动标记
+# 启用自动分离
 autodetach on
-
-# 禁用视觉响铃
-vbell off
-
-# 设置终端标题更新间隔
-# titlelen 50
-
-# ==================== 高级功能 ====================
-
-# 启用窗口切换时的视觉反馈
-# defhstatus "screen ^E (^Et) | $USER@^EH"
-
-# 设置会话启动后自动连接
-# screen -r main || screen -S main
-
-# ==================== 兼容性设置 ====================
-
-# 为不同终端类型提供兼容性
-termcapinfo xterm 'Co#256:AB=\E[48;5;%dm:AF=\E[38;5;%dm'
-
-# 设置鼠标滚轮模式
-termcapinfo xterm* 'XT:Ms=\E[%d%d;%u%u%d%d;%u%u%d%d;%u%u%d%d;%u%u%ds' 'hs:ts=\E]2;:fs=\007:ds=\E]2;screen\007'
-
-# ==================== 样式设置 ====================
-
-# 颜色方案（可选）
-# caption always "%{= kW}%?%-Lw%?%{= BW}%n*%f %t%?(%u)%?%{= kW}%?%+Lw%?%?%= %{= kY} %H %{= kC} %ld/%l %{= kY} %{= kW}"
-
-# ==================== 结尾 ====================
-
-# 提示：此配置文件提供了Screen的最佳实践设置
-# 如需自定义，请参考 Screen 完整使用指南.md
-#
-# 使用方法：
-# 1. 复制此文件到 ~/.screenrc
-# 2. 重启Screen会话或重新连接
-# 3. 享受优化后的Screen体验
-#
-# 常用快捷键：
-# - Ctrl+A ?    显示帮助
-# - Ctrl+A c    创建新窗口
-# - Ctrl+A 0-9  切换窗口
-# - Ctrl+A d    分离会话
-# - Ctrl+A [    进入复制模式
-# - Ctrl+A S    水平分割
-# - Ctrl+A |    垂直分割
