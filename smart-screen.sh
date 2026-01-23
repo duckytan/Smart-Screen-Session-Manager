@@ -246,13 +246,6 @@ connect_session() {
 # 显示所有活跃会话
 ################################################################################
 show_all_sessions() {
-    # 检查是否在非交互式环境中
-    if ! is_interactive; then
-        echo -e "${YELLOW}⚠️  此功能需要在交互式环境中使用${NC}"
-        echo -e "${WHITE}💡 提示：在交互式终端中直接运行 $0 选择 'a'${NC}"
-        return 0
-    fi
-
     local sessions=$(screen -list | grep -v "No Sockets found" | grep -v "There is no screen" | awk 'NR>1 {print $1}' | cut -d'.' -f2)
 
     if [ -z "$sessions" ]; then
@@ -372,24 +365,13 @@ show_help() {
     echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    if is_interactive; then
-        safe_read "按 Enter 键继续..."
-    else
-        echo "（非交互式环境，自动继续）"
-    fi
+    safe_read "按 Enter 键继续..."
 }
 
 ################################################################################
 # 编辑脚本
 ################################################################################
 edit_script() {
-    # 检查是否在非交互式环境中
-    if ! is_interactive; then
-        echo -e "${YELLOW}⚠️  此功能需要在交互式环境中使用${NC}"
-        echo -e "${WHITE}💡 提示：在交互式终端中直接运行 $0 选择 'e'${NC}"
-        return 0
-    fi
-
     echo -e "${CYAN}正在打开编辑器...${NC}"
     if command -v nano &>/dev/null; then
         nano "$0"
@@ -419,11 +401,7 @@ auto_install() {
             # 检查权限
             if [ ! -w ~/.bashrc ]; then
                 echo -e "${RED}❌ 没有写入 ~/.bashrc 的权限${NC}"
-                if is_interactive; then
-        safe_read "按 Enter 键继续..."
-    else
-        echo "（非交互式环境，自动继续）"
-    fi
+                safe_read "按 Enter 键继续..."
                 return
             fi
 
@@ -475,21 +453,13 @@ auto_install() {
             else
                 echo -e "${RED}❌ 删除旧配置失败${NC}"
                 rm -f "$temp_file"
-                if is_interactive; then
-        safe_read "按 Enter 键继续..."
-    else
-        echo "（非交互式环境，自动继续）"
-    fi
+                safe_read "按 Enter 键继续..."
                 return
             fi
         else
             echo -e "${BLUE}跳过自动启动配置${NC}"
             echo ""
-            if is_interactive; then
-        safe_read "按 Enter 键继续..."
-    else
-        echo "（非交互式环境，自动继续）"
-    fi
+            safe_read "按 Enter 键继续..."
             return
         fi
     fi
@@ -519,22 +489,14 @@ auto_install() {
                     else
                         echo -e "${RED}❌ 无法获取sudo权限，请检查sudo配置${NC}"
                         echo -e "${YELLOW}💡 提示：可以手动运行 'sudo apt-get install screen' 或 'sudo yum install screen'${NC}"
-                        if is_interactive; then
-        safe_read "按 Enter 键继续..."
-    else
-        echo "（非交互式环境，自动继续）"
-    fi
+                        safe_read "按 Enter 键继续..."
                         return
                     fi
                 fi
             else
                 echo -e "${RED}❌ 需要root权限但系统中未安装sudo${NC}"
                 echo -e "${YELLOW}💡 提示：请手动安装screen或联系系统管理员${NC}"
-                if is_interactive; then
-        safe_read "按 Enter 键继续..."
-    else
-        echo "（非交互式环境，自动继续）"
-    fi
+                safe_read "按 Enter 键继续..."
                 return
             fi
         fi
@@ -555,11 +517,7 @@ auto_install() {
             fi
         else
             echo -e "${RED}❌ 无法自动安装 screen，请手动安装${NC}"
-            if is_interactive; then
-        safe_read "按 Enter 键继续..."
-    else
-        echo "（非交互式环境，自动继续）"
-    fi
+            safe_read "按 Enter 键继续..."
             return
         fi
 
@@ -569,11 +527,7 @@ auto_install() {
         else
             echo -e "${RED}❌ screen 安装失败${NC}"
             echo -e "${YELLOW}💡 提示：请检查网络连接或手动安装screen${NC}"
-            if is_interactive; then
-        safe_read "按 Enter 键继续..."
-    else
-        echo "（非交互式环境，自动继续）"
-    fi
+            safe_read "按 Enter 键继续..."
             return
         fi
     fi
@@ -589,11 +543,7 @@ auto_install() {
     if [ -f ~/.bashrc ] && [ ! -w ~/.bashrc ]; then
         echo -e "${RED}❌ ~/.bashrc 存在但没有写入权限${NC}"
         echo -e "${YELLOW}💡 提示：请检查文件权限或手动添加配置${NC}"
-        if is_interactive; then
         safe_read "按 Enter 键继续..."
-    else
-        echo "（非交互式环境，自动继续）"
-    fi
         return
     fi
 
@@ -629,11 +579,7 @@ auto_install() {
     else
         echo -e "${RED}❌ 自启动配置失败${NC}"
         echo -e "${YELLOW}💡 提示：请检查 ~/.bashrc 权限或手动添加配置${NC}"
-        if is_interactive; then
         safe_read "按 Enter 键继续..."
-    else
-        echo "（非交互式环境，自动继续）"
-    fi
         return
     fi
 
@@ -653,12 +599,7 @@ auto_install() {
     echo -e "${GREEN}║${NC}                                                            ${GREEN}║${NC}"
     echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-
-    if is_interactive; then
-        safe_read "按 Enter 键继续..."
-    else
-        echo "（非交互式环境，自动继续）"
-    fi
+    safe_read "按 Enter 键继续..."
 }
 
 ################################################################################
@@ -682,11 +623,7 @@ auto_uninstall() {
         if [ ! -w ~/.bashrc ]; then
             echo -e "${RED}❌ 没有写入 ~/.bashrc 的权限${NC}"
             echo -e "${YELLOW}💡 提示：请检查文件权限${NC}"
-            if is_interactive; then
-        safe_read "按 Enter 键继续..."
-    else
-        echo "（非交互式环境，自动继续）"
-    fi
+            safe_read "按 Enter 键继续..."
             return
         fi
 
@@ -741,11 +678,7 @@ auto_uninstall() {
         else
             echo -e "${RED}❌ 删除配置文件失败${NC}"
             rm -f "$temp_file"
-            if is_interactive; then
-        safe_read "按 Enter 键继续..."
-    else
-        echo "（非交互式环境，自动继续）"
-    fi
+            safe_read "按 Enter 键继续..."
             return
         fi
 
@@ -772,11 +705,7 @@ auto_uninstall() {
     fi
 
     echo ""
-    if is_interactive; then
-        safe_read "按 Enter 键继续..."
-    else
-        echo "（非交互式环境，自动继续）"
-    fi
+    safe_read "按 Enter 键继续..."
 }
 
 ################################################################################
@@ -813,26 +742,7 @@ safe_read() {
 }
 
 ################################################################################
-# 检查是否为交互式终端
-################################################################################
-is_interactive() {
-    if [ -t 0 ] && [ -t 1 ] && [ -n "$PS1" ]; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-################################################################################
-# 显示非交互式模式提示（保留以兼容旧代码）
-################################################################################
-show_non_interactive_message() {
-    # 脚本现在支持非交互式运行，无需特殊处理
-    :
-}
-
-################################################################################
-# 处理命令行参数（非交互式模式）
+# 处理命令行参数
 ################################################################################
 handle_command_line_args() {
     # 检查是否有命令行参数
@@ -885,7 +795,7 @@ handle_command_line_args() {
                 ;;
         esac
     else
-        # 无参数时调用main函数，让main函数处理环境检测
+        # 无参数时调用main函数
         return 0
     fi
 }
@@ -896,29 +806,6 @@ handle_command_line_args() {
 main() {
     # 处理命令行参数
     handle_command_line_args "$@"
-
-    # 脚本现在支持交互式和非交互式环境
-    # safe_read() 函数会自动处理非交互式情况
-
-    # 在非交互式环境下，显示菜单后直接退出
-    if ! is_interactive; then
-        show_header
-        if check_screen_available; then
-            show_sessions
-        else
-            # screen 未安装，显示简化菜单
-            echo -e "${RED}⚠️  screen 未安装${NC}"
-            echo -e "${YELLOW}首次使用建议先运行 'i' 进行自动安装${NC}"
-            echo ""
-            echo -e "${CYAN}可用的操作：${NC}"
-            echo -e "  [${GREEN}i${NC}] ${ICON_INSTALL} 自动安装（安装依赖+配置自启动）"
-            echo -e "  [${GREEN}h${NC}] ${ICON_HELP} 帮助信息"
-            echo -e "  [${GREEN}q${NC}] ${ICON_QUIT} 退出"
-            echo ""
-        fi
-        echo -e "${YELLOW}💡 提示: 在交互式终端中运行 $0 进入完整菜单${NC}"
-        exit 0
-    fi
 
     while true; do
         show_header
