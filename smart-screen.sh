@@ -487,6 +487,40 @@ check_screen_available() {
 }
 
 ################################################################################
+# 检查是否为交互式终端
+################################################################################
+is_interactive() {
+    if [ -t 0 ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+################################################################################
+# 显示首次使用提示（非交互式）
+################################################################################
+show_first_time_prompt() {
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${WHITE}                    首次使用提示                       ${CYAN}║${NC}"
+    echo -e "${CYAN}╠════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${RED}  ⚠️  screen 未安装${NC}                                        ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${WHITE}  请选择安装方式：                                         ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${GREEN}  方式一：自动安装（推荐）                                 ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  重新运行此脚本并选择 'i' 进行自动安装              ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${GREEN}  方式二：手动安装                                        ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  Ubuntu/Debian: sudo apt-get install screen              ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  CentOS/RHEL:   sudo yum install screen                  ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+}
+
+################################################################################
 # 主循环
 ################################################################################
 main() {
@@ -495,32 +529,39 @@ main() {
 
         # 检查 screen 是否安装
         if ! check_screen_available; then
-            echo -e "${RED}⚠️  screen 未安装${NC}"
-            echo -e "${YELLOW}首次使用建议先运行 'i' 进行自动安装${NC}"
-            echo ""
-            echo -e "${CYAN}可用的操作：${NC}"
-            echo -e "  [${GREEN}i${NC}] ${ICON_INSTALL} 自动安装（安装依赖+配置自启动）"
-            echo -e "  [${GREEN}h${NC}] ${ICON_HELP} 帮助信息"
-            echo -e "  [${GREEN}q${NC}] ${ICON_QUIT} 退出"
-            echo ""
-            read -p "请选择操作: " choice
+            if is_interactive; then
+                # 交互式模式 - 显示菜单
+                echo -e "${RED}⚠️  screen 未安装${NC}"
+                echo -e "${YELLOW}首次使用建议先运行 'i' 进行自动安装${NC}"
+                echo ""
+                echo -e "${CYAN}可用的操作：${NC}"
+                echo -e "  [${GREEN}i${NC}] ${ICON_INSTALL} 自动安装（安装依赖+配置自启动）"
+                echo -e "  [${GREEN}h${NC}] ${ICON_HELP} 帮助信息"
+                echo -e "  [${GREEN}q${NC}] ${ICON_QUIT} 退出"
+                echo ""
+                read -p "请选择操作: " choice
 
-            case $choice in
-                i|I)
-                    auto_install
-                    ;;
-                h|H)
-                    show_help
-                    ;;
-                q|Q)
-                    echo -e "${GREEN}👋 再见！${NC}"
-                    exit 0
-                    ;;
-                *)
-                    echo -e "${RED}无效选择，请重试${NC}"
-                    sleep 1
-                    ;;
-            esac
+                case $choice in
+                    i|I)
+                        auto_install
+                        ;;
+                    h|H)
+                        show_help
+                        ;;
+                    q|Q)
+                        echo -e "${GREEN}👋 再见！${NC}"
+                        exit 0
+                        ;;
+                    *)
+                        echo -e "${RED}无效选择，请重试${NC}"
+                        sleep 1
+                        ;;
+                esac
+            else
+                # 非交互式模式 - 显示安装提示并退出
+                show_first_time_prompt
+                exit 0
+            fi
         else
             # screen 已安装，正常显示会话列表
             show_sessions
