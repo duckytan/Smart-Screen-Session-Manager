@@ -885,15 +885,8 @@ handle_command_line_args() {
                 ;;
         esac
     else
-        # 非交互式环境无参数：显示使用说明并退出
-        if ! is_interactive; then
-            echo -e "${YELLOW}非交互式环境检测${NC}"
-            echo -e "${WHITE}用法: $0 [选项]${NC}"
-            echo -e "${WHITE}选项: 1-9(会话) a(所有会话) c(清理) d(删除) i(安装) u(卸载) h(帮助) q(退出)${NC}"
-            echo -e "${WHITE}示例: $0 1  # 连接到dev会话${NC}"
-            echo -e "${WHITE}示例: $0 h  # 显示帮助${NC}"
-            exit 0
-        fi
+        # 无参数时调用main函数，让main函数处理环境检测
+        return 0
     fi
 }
 
@@ -907,16 +900,23 @@ main() {
     # 脚本现在支持交互式和非交互式环境
     # safe_read() 函数会自动处理非交互式情况
 
-    # 检查是否在非交互式环境中被直接调用
-    # 如果是非交互式环境且没有命令行参数，则显示提示并退出
-    if ! is_interactive && [ $# -eq 0 ]; then
-        echo -e "${YELLOW}⚠️  非交互式环境检测${NC}"
-        echo -e "${WHITE}用法: $0 [选项]${NC}"
-        echo -e "${WHITE}选项: 1-9(会话) a(所有会话) c(清理) d(删除) i(安装) u(卸载) h(帮助) q(退出)${NC}"
-        echo -e "${WHITE}示例: $0 1  # 连接到dev会话${NC}"
-        echo -e "${WHITE}示例: $0 h  # 显示帮助${NC}"
-        echo ""
-        echo -e "${CYAN}💡 提示: 在交互式终端中直接运行 $0 进入交互模式${NC}"
+    # 在非交互式环境下，显示菜单后直接退出
+    if ! is_interactive; then
+        show_header
+        if check_screen_available; then
+            show_sessions
+        else
+            # screen 未安装，显示简化菜单
+            echo -e "${RED}⚠️  screen 未安装${NC}"
+            echo -e "${YELLOW}首次使用建议先运行 'i' 进行自动安装${NC}"
+            echo ""
+            echo -e "${CYAN}可用的操作：${NC}"
+            echo -e "  [${GREEN}i${NC}] ${ICON_INSTALL} 自动安装（安装依赖+配置自启动）"
+            echo -e "  [${GREEN}h${NC}] ${ICON_HELP} 帮助信息"
+            echo -e "  [${GREEN}q${NC}] ${ICON_QUIT} 退出"
+            echo ""
+        fi
+        echo -e "${YELLOW}💡 提示: 在交互式终端中运行 $0 进入完整菜单${NC}"
         exit 0
     fi
 
