@@ -8,7 +8,7 @@
 # 简洁高效的Screen会话管理工具
 # 支持多用户协作、预设会话、简洁提示符
 #
-set -euo pipefail
+set -eo pipefail  # 移除 u 选项，避免未定义变量导致退出
 
 ################################################################################
 # 错误处理函数
@@ -487,6 +487,27 @@ check_screen_available() {
 }
 
 ################################################################################
+# 安全读取输入
+################################################################################
+safe_read() {
+    local prompt="$1"
+    local default_value="${2:-}"
+
+    if [ -t 0 ]; then
+        # 交互式环境
+        read -r "$prompt" choice
+    else
+        # 非交互式环境，使用默认值
+        echo -n "$prompt"
+        read -r choice
+        # 如果没有输入，使用默认值
+        if [ -z "$choice" ]; then
+            choice="$default_value"
+        fi
+    fi
+}
+
+################################################################################
 # 主循环
 ################################################################################
 main() {
@@ -504,7 +525,8 @@ main() {
             echo -e "  [${GREEN}h${NC}] ${ICON_HELP} 帮助信息"
             echo -e "  [${GREEN}q${NC}] ${ICON_QUIT} 退出"
             echo ""
-            # 禁用错误检查，允许read命令失败
+
+            # 临时禁用错误检查
             set +e
             read -p "请选择操作: " choice
             set -e
@@ -520,6 +542,10 @@ main() {
                     echo -e "${GREEN}👋 再见！${NC}"
                     exit 0
                     ;;
+                "")
+                    echo -e "${YELLOW}请输入选择！${NC}"
+                    sleep 1
+                    ;;
                 *)
                     echo -e "${RED}无效选择，请重试${NC}"
                     sleep 1
@@ -528,7 +554,8 @@ main() {
         else
             # screen 已安装，正常显示会话列表
             show_sessions
-            # 禁用错误检查，允许read命令失败
+
+            # 临时禁用错误检查
             set +e
             read -p "请选择操作: " choice
             set -e
@@ -563,6 +590,10 @@ main() {
                 q|Q)
                     echo -e "${GREEN}👋 再见！${NC}"
                     exit 0
+                    ;;
+                "")
+                    echo -e "${YELLOW}请输入选择！${NC}"
+                    sleep 1
                     ;;
                 *)
                     echo -e "${RED}无效选择，请重试${NC}"
