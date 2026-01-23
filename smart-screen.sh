@@ -185,6 +185,12 @@ validate_numeric_input() {
 ensure_multiuser_mode() {
     local session_name="$1"
 
+    # 检查会话是否存在
+    if ! screen -list | grep -q "$session_name"; then
+        echo -e "${YELLOW}⚠️  会话 $session_name 不存在，无法启用多用户模式${NC}"
+        return 1
+    fi
+
     # 启用多用户模式
     if screen -S "$session_name" -X multiuser on 2>/dev/null; then
         echo -e "${GREEN}✓ 多用户模式已启用${NC}"
@@ -201,6 +207,8 @@ ensure_multiuser_mode() {
     else
         echo -e "${YELLOW}⚠️  无法添加用户权限，但可以继续使用${NC}"
     fi
+
+    return 0
 }
 
 ################################################################################
@@ -219,11 +227,13 @@ connect_session() {
     if screen -list | grep -q "$session_name"; then
         echo -e "${GREEN}连接到现有会话: $session_name${NC}"
         echo -e "${BLUE}💡 使用 screen -xR 支持多用户协作${NC}"
+        echo -e "${YELLOW}💡 按 Ctrl+A 然后按 D 可从会话返回菜单${NC}"
 
         # 确保多用户模式已启用
         ensure_multiuser_mode "$session_name"
 
-        exec screen -xR "$session_name"
+        # 使用 screen -xR 而不是 exec，让用户可以从会话返回到菜单
+        screen -xR "$session_name"
     else
         echo -e "${CYAN}创建新会话: $session_name${NC}"
         echo -e "${BLUE}💡 自动启用多用户模式，支持协作${NC}"
@@ -238,7 +248,8 @@ connect_session() {
         ensure_multiuser_mode "$session_name"
 
         # 连接会话
-        exec screen -xR "$session_name"
+        echo -e "${YELLOW}💡 按 Ctrl+A 然后按 D 可从会话返回菜单${NC}"
+        screen -xR "$session_name"
     fi
 }
 
@@ -275,11 +286,13 @@ show_all_sessions() {
         local selected_session=$(echo "$sessions" | sed -n "${choice}p")
         echo -e "${GREEN}连接到会话: $selected_session${NC}"
         echo -e "${BLUE}💡 使用 screen -xR 支持多用户协作${NC}"
+        echo -e "${YELLOW}💡 按 Ctrl+A 然后按 D 可从会话返回菜单${NC}"
 
         # 确保多用户模式已启用
         ensure_multiuser_mode "$selected_session"
 
-        exec screen -xR "$selected_session"
+        # 使用 screen -xR 而不是 exec，让用户可以从会话返回到菜单
+        screen -xR "$selected_session"
     else
         echo -e "${YELLOW}无效选择，返回主菜单${NC}"
     fi
@@ -291,34 +304,55 @@ show_all_sessions() {
 clean_duplicate_sessions() {
     echo -e "${YELLOW}🧹 正在清理重复会话...${NC}"
 
-    # 获取所有会话列表
-    local sessions=$(screen -list | grep -v "No Sockets found" | grep -v "There is no screen" | awk 'NR>1 {print $1}' | cut -d'.' -f2)
+    # 获取所有会话列表（包含PID和会话名）
+    local all_sessions=$(screen -list | grep -v "No Sockets found" | grep -v "There is no screen" | awk 'NR>1 {print $1}')
 
-    if [ -z "$sessions" ]; then
+    if [ -z "$all_sessions" ]; then
         echo -e "${YELLOW}没有找到重复会话${NC}"
         return
     fi
 
-    # 查找重复的会话名称（去掉编号后缀）
-    local unique_names=$(echo "$sessions" | sed 's/[0-9]*$//' | sort -u)
+    # 创建关联数组来统计会话名称出现次数
+    declare -A session_count
+    declare -A session_list
 
-    for name in $unique_names; do
-        # 获取同名会话的数量
-        local count=$(echo "$sessions" | grep "^$name" | wc -l)
+    # 统计每个会话名称的出现次数，并保存完整会话信息
+    while IFS= read -r line; do
+        # 提取会话名称（去掉PID.前缀）
+        local full_session=$(echo "$line" | awk '{print $1}')
+        local session_name=$(echo "$line" | cut -d'.' -f2)
+
+        session_count["$session_name"]=$((${session_count["$session_name"]:-0} + 1))
+        session_list["$session_name"]="${session_list["$session_name"]:-}$full_session\n"
+    done <<< "$all_sessions"
+
+    # 查找并删除重复的会话
+    local found_duplicates=false
+
+    for session_name in "${!session_count[@]}"; do
+        local count=${session_count["$session_name"]}
 
         if [ $count -gt 1 ]; then
-            echo -e "${YELLOW}发现重复会话: $name (共 $count 个)${NC}"
+            found_duplicates=true
+            echo -e "${YELLOW}发现重复会话: $session_name (共 $count 个)${NC}"
 
-            # 保留第一个，删除其他的
-            local sessions_to_kill=$(echo "$sessions" | grep "^$name" | tail -n +2)
-            for session in $sessions_to_kill; do
-                screen -S "$session" -X quit
-                echo -e "  ${RED}删除: $session${NC}"
+            # 获取所有同名会话列表，保留第一个，删除其他的
+            local sessions_array=($(echo -e "${session_list["$session_name"]}" | grep -v '^$'))
+
+            # 从第二个开始删除
+            for ((i=1; i<${#sessions_array[@]}; i++)); do
+                local session_to_kill="${sessions_array[i]}"
+                screen -S "$session_to_kill" -X quit 2>/dev/null
+                echo -e "  ${RED}删除: $session_to_kill${NC}"
             done
         fi
     done
 
-    echo -e "${GREEN}✨ 清理完成！${NC}"
+    if [ "$found_duplicates" = false ]; then
+        echo -e "${GREEN}没有发现重复会话${NC}"
+    else
+        echo -e "${GREEN}✨ 清理完成！${NC}"
+    fi
 }
 
 ################################################################################
@@ -330,8 +364,28 @@ delete_all_sessions() {
 
     if [ "$confirm" = "yes" ]; then
         echo -e "${RED}🗑️  正在删除所有会话...${NC}"
+
+        # 获取所有会话列表（包含PID和会话名）
+        local all_sessions=$(screen -list | grep -v "No Sockets found" | grep -v "There is no screen" | awk 'NR>1 {print $1}')
+
+        if [ -z "$all_sessions" ]; then
+            echo -e "${YELLOW}没有找到任何会话${NC}"
+            return
+        fi
+
+        # 逐个删除所有会话
+        local deleted_count=0
+        while IFS= read -r line; do
+            local full_session=$(echo "$line" | awk '{print $1}')
+            screen -S "$full_session" -X quit 2>/dev/null
+            echo -e "  ${RED}删除: $full_session${NC}"
+            deleted_count=$((deleted_count + 1))
+        done <<< "$all_sessions"
+
+        # 清理残留的死亡会话
         screen -wipe &>/dev/null
-        echo -e "${GREEN}✨ 所有会话已删除${NC}"
+
+        echo -e "${GREEN}✨ 已删除 $deleted_count 个会话${NC}"
     else
         echo -e "${YELLOW}操作已取消${NC}"
     fi
@@ -365,7 +419,13 @@ show_help() {
     echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    safe_read "按 Enter 键继续..."
+
+    # 检查是否在交互式环境中
+    if [ -t 0 ] && [ -t 1 ]; then
+        safe_read "按 Enter 键继续..."
+    else
+        echo -e "${YELLOW}💡 提示：在非交互式环境中运行，帮助信息已显示完毕${NC}"
+    fi
 }
 
 ################################################################################
@@ -375,10 +435,20 @@ edit_script() {
     echo -e "${CYAN}正在打开编辑器...${NC}"
     if command -v nano &>/dev/null; then
         nano "$0"
+        if [ $? -ne 0 ]; then
+            echo -e "${YELLOW}编辑器已关闭${NC}"
+        fi
     elif command -v vim &>/dev/null; then
         vim "$0"
+        if [ $? -ne 0 ]; then
+            echo -e "${YELLOW}编辑器已关闭${NC}"
+        fi
     else
-        echo -e "${YELLOW}请安装 nano 或 vim 编辑器${NC}"
+        echo -e "${RED}❌ 未找到可用的编辑器${NC}"
+        echo -e "${YELLOW}💡 提示：请安装 nano 或 vim${NC}"
+        echo -e "${YELLOW}   Ubuntu/Debian: sudo apt-get install nano${NC}"
+        echo -e "${YELLOW}   CentOS/RHEL: sudo yum install nano${NC}"
+        safe_read "按 Enter 键继续..."
     fi
 }
 
@@ -414,32 +484,27 @@ auto_install() {
                 fi
             fi
 
-            # 安全删除：使用与卸载相同的逻辑
+            # 安全删除：注释掉Smart Screen相关的配置块，而不是删除
             local temp_file=$(mktemp)
             local in_smart_screen_block=false
-            local block_depth=0
 
             while IFS= read -r line; do
                 # 检测配置块开始
                 if [[ "$line" =~ "# Smart Screen Session Manager" ]]; then
                     in_smart_screen_block=true
-                    block_depth=1
+                    echo "# [DISABLED] $line" >> "$temp_file"
                     continue
                 fi
 
-                # 如果在配置块内
+                # 如果在配置块内，注释掉所有行
                 if [ "$in_smart_screen_block" = true ]; then
-                    # 计算大括号嵌套深度
-                    if [[ "$line" =~ if\ \[ ]]; then
-                        ((block_depth++))
-                    elif [[ "$line" =~ ^[[:space:]]*fi[[:space:]]*$ ]]; then
-                        ((block_depth--))
-                        if [ $block_depth -eq 0 ]; then
-                            in_smart_screen_block=false
-                            continue
-                        fi
+                    if [[ "$line" =~ ^[[:space:]]*fi[[:space:]]*$ ]]; then
+                        # 配置块结束
+                        in_smart_screen_block=false
+                        echo "# [DISABLED] $line" >> "$temp_file"
+                    else
+                        echo "# [DISABLED] $line" >> "$temp_file"
                     fi
-                    continue
                 else
                     # 输出非配置块的行
                     echo "$line" >> "$temp_file"
@@ -449,9 +514,9 @@ auto_install() {
             # 替换原文件
             mv "$temp_file" ~/.bashrc 2>/dev/null
             if [ $? -eq 0 ]; then
-                echo -e "${GREEN}✓ 已删除旧配置${NC}"
+                echo -e "${GREEN}✓ 已禁用旧配置（已注释）${NC}"
             else
-                echo -e "${RED}❌ 删除旧配置失败${NC}"
+                echo -e "${RED}❌ 禁用旧配置失败${NC}"
                 rm -f "$temp_file"
                 safe_read "按 Enter 键继续..."
                 return
@@ -472,33 +537,49 @@ auto_install() {
     else
         echo -e "${YELLOW}⚠ screen 未安装，正在安装...${NC}"
 
-        # 检查是否有安装权限
+        # 预检查安装权限
+        local can_install=false
         local need_sudo=false
-        local install_cmd=""
 
-        if [ "$EUID" -ne 0 ]; then
-            # 非root用户，需要检查sudo
-            if command -v sudo &> /dev/null; then
-                if sudo -n true 2>/dev/null; then
-                    # 有sudo免密权限
-                    need_sudo=true
-                else
-                    echo -e "${YELLOW}检测到需要sudo权限，正在申请...${NC}"
-                    if sudo -v 2>/dev/null; then
-                        need_sudo=true
-                    else
-                        echo -e "${RED}❌ 无法获取sudo权限，请检查sudo配置${NC}"
-                        echo -e "${YELLOW}💡 提示：可以手动运行 'sudo apt-get install screen' 或 'sudo yum install screen'${NC}"
-                        safe_read "按 Enter 键继续..."
-                        return
-                    fi
-                fi
+        if [ "$EUID" -eq 0 ]; then
+            # 当前是root用户，可以直接安装
+            echo -e "${GREEN}✓ 检测到root权限${NC}"
+            can_install=true
+        elif command -v sudo &> /dev/null; then
+            # 检查sudo权限
+            if sudo -n true 2>/dev/null; then
+                # 有sudo免密权限
+                echo -e "${GREEN}✓ 检测到sudo免密权限${NC}"
+                need_sudo=true
+                can_install=true
             else
-                echo -e "${RED}❌ 需要root权限但系统中未安装sudo${NC}"
-                echo -e "${YELLOW}💡 提示：请手动安装screen或联系系统管理员${NC}"
-                safe_read "按 Enter 键继续..."
-                return
+                # 需要申请sudo权限
+                echo -e "${YELLOW}⚠ 需要sudo权限安装screen${NC}"
+                echo -e "${YELLOW}正在申请sudo权限...${NC}"
+                if sudo -v 2>/dev/null; then
+                    echo -e "${GREEN}✓ sudo权限获取成功${NC}"
+                    need_sudo=true
+                    can_install=true
+                else
+                    echo -e "${RED}❌ 无法获取sudo权限${NC}"
+                    echo -e "${YELLOW}💡 提示：${NC}"
+                    echo -e "${YELLOW}   方法1: 使用 'sudo $0' 运行脚本${NC}"
+                    echo -e "${YELLOW}   方法2: 手动运行 'sudo apt-get install screen' 或 'sudo yum install screen'${NC}"
+                    safe_read "按 Enter 键继续..."
+                    return
+                fi
             fi
+        else
+            echo -e "${RED}❌ 需要root权限安装screen，但系统未安装sudo${NC}"
+            echo -e "${YELLOW}💡 提示：请手动安装screen或联系系统管理员${NC}"
+            safe_read "按 Enter 键继续..."
+            return
+        fi
+
+        if [ "$can_install" = false ]; then
+            echo -e "${RED}❌ 无法安装screen${NC}"
+            safe_read "按 Enter 键继续..."
+            return
         fi
 
         if command -v apt-get &> /dev/null; then
@@ -638,33 +719,27 @@ auto_uninstall() {
             fi
         fi
 
-        # 安全删除配置：只删除 Smart Screen Session Manager 相关的配置块
+        # 安全删除配置：注释掉 Smart Screen Session Manager 相关的配置块
         local temp_file=$(mktemp)
         local in_smart_screen_block=false
-        local block_depth=0
 
         while IFS= read -r line; do
             # 检测配置块开始
             if [[ "$line" =~ "# Smart Screen Session Manager" ]]; then
                 in_smart_screen_block=true
-                block_depth=1
+                echo "# [REMOVED] $line" >> "$temp_file"
                 continue
             fi
 
-            # 如果在配置块内
+            # 如果在配置块内，注释掉所有行
             if [ "$in_smart_screen_block" = true ]; then
-                # 计算大括号嵌套深度
-                if [[ "$line" =~ if\ \[ ]]; then
-                    ((block_depth++))
-                elif [[ "$line" =~ ^[[:space:]]*fi[[:space:]]*$ ]]; then
-                    ((block_depth--))
-                    if [ $block_depth -eq 0 ]; then
-                        # 配置块结束，不输出这个 fi
-                        in_smart_screen_block=false
-                        continue
-                    fi
+                if [[ "$line" =~ ^[[:space:]]*fi[[:space:]]*$ ]]; then
+                    # 配置块结束
+                    in_smart_screen_block=false
+                    echo "# [REMOVED] $line" >> "$temp_file"
+                else
+                    echo "# [REMOVED] $line" >> "$temp_file"
                 fi
-                continue  # 跳过配置块内的所有行
             else
                 # 输出非配置块的行
                 echo "$line" >> "$temp_file"
@@ -674,7 +749,7 @@ auto_uninstall() {
         # 替换原文件
         mv "$temp_file" ~/.bashrc 2>/dev/null
         if [ $? -eq 0 ]; then
-            echo -e "${GREEN}✓ 已删除 ~/.bashrc 中的自启动配置${NC}"
+            echo -e "${GREEN}✓ 已删除 ~/.bashrc 中的自启动配置（已注释）${NC}"
         else
             echo -e "${RED}❌ 删除配置文件失败${NC}"
             rm -f "$temp_file"
@@ -734,8 +809,16 @@ safe_read() {
             result="$default_value"
         fi
     else
-        # 非交互式环境：使用默认值，避免无限循环
-        result="$default_value"
+        # 非交互式环境：只对特定默认值使用默认值，避免自动退出
+        if [ -n "$default_value" ] && [ "$default_value" != "q" ]; then
+            result="$default_value"
+        else
+            # 对于"q"或其他默认退出值，不使用默认值，提示用户
+            echo -e "${RED}⚠️  检测到非交互式环境${NC}" >&2
+            echo -e "${YELLOW}💡 提示：请使用命令行参数直接操作${NC}" >&2
+            echo -e "${WHITE}例如: $0 1 (进入会话1) | $0 h (查看帮助) | $0 a (显示所有会话)${NC}" >&2
+            result=""
+        fi
     fi
 
     echo "$result"
