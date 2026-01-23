@@ -504,7 +504,10 @@ main() {
             echo -e "  [${GREEN}h${NC}] ${ICON_HELP} 帮助信息"
             echo -e "  [${GREEN}q${NC}] ${ICON_QUIT} 退出"
             echo ""
+            # 禁用错误检查，允许read命令失败
+            set +e
             read -p "请选择操作: " choice
+            set -e
 
             case $choice in
                 i|I)
@@ -525,7 +528,10 @@ main() {
         else
             # screen 已安装，正常显示会话列表
             show_sessions
+            # 禁用错误检查，允许read命令失败
+            set +e
             read -p "请选择操作: " choice
+            set -e
 
             case $choice in
                 [1-9])
