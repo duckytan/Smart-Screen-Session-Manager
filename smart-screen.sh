@@ -508,9 +508,55 @@ safe_read() {
 }
 
 ################################################################################
+# 检查是否为交互式终端
+################################################################################
+is_interactive() {
+    if [ -t 0 ] && [ -t 1 ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+################################################################################
+# 显示非交互式模式提示
+################################################################################
+show_non_interactive_message() {
+    clear
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${WHITE}              Smart Screen Session Manager v2.0            ${CYAN}║${NC}"
+    echo -e "${CYAN}╠════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${YELLOW}  检测到非交互式环境                                      ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${WHITE}  最佳使用方式：                                         ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${GREEN}  1. 下载脚本到本地：                                   ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}     curl -fsSL https://.../smart-screen.sh -o smart-screen.sh ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${GREEN}  2. 赋予执行权限：                                     ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}     chmod +x smart-screen.sh                              ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${GREEN}  3. 直接运行脚本：                                     ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}     ./smart-screen.sh                                    ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${WHITE}  或者手动安装 screen 后重新运行：                      ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}     sudo apt-get install screen                          ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    exit 0
+}
+
+################################################################################
 # 主循环
 ################################################################################
 main() {
+    # 检查是否为交互式环境
+    if ! is_interactive; then
+        show_non_interactive_message
+    fi
+
     while true; do
         show_header
 
