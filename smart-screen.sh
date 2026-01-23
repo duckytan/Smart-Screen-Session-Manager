@@ -477,58 +477,92 @@ auto_uninstall() {
 }
 
 ################################################################################
+# 检查 screen 是否可用
+################################################################################
+check_screen_available() {
+    if ! command -v screen &>/dev/null; then
+        return 1
+    fi
+    return 0
+}
+
+################################################################################
 # 主循环
 ################################################################################
 main() {
-    # 检查 screen 是否安装
-    if ! command -v screen &>/dev/null; then
-        echo -e "${RED}错误: screen 未安装${NC}"
-        echo -e "${YELLOW}请运行: sudo apt-get install screen${NC}"
-        exit 1
-    fi
-
     while true; do
         show_header
-        show_sessions
 
-        read -p "请选择操作: " choice
+        # 检查 screen 是否安装
+        if ! check_screen_available; then
+            echo -e "${RED}⚠️  screen 未安装${NC}"
+            echo -e "${YELLOW}首次使用建议先运行 'i' 进行自动安装${NC}"
+            echo ""
+            echo -e "${CYAN}可用的操作：${NC}"
+            echo -e "  [${GREEN}i${NC}] ${ICON_INSTALL} 自动安装（安装依赖+配置自启动）"
+            echo -e "  [${GREEN}h${NC}] ${ICON_HELP} 帮助信息"
+            echo -e "  [${GREEN}q${NC}] ${ICON_QUIT} 退出"
+            echo ""
+            read -p "请选择操作: " choice
 
-        case $choice in
-            [1-9])
-                connect_session "${SESSION_MAP[$choice]}"
-                ;;
-            a|A)
-                show_all_sessions
-                ;;
-            c|C)
-                clean_duplicate_sessions
-                sleep 2
-                ;;
-            d|D)
-                delete_all_sessions
-                sleep 2
-                ;;
-            e|E)
-                edit_script
-                ;;
-            i|I)
-                auto_install
-                ;;
-            u|U)
-                auto_uninstall
-                ;;
-            h|H)
-                show_help
-                ;;
-            q|Q)
-                echo -e "${GREEN}👋 再见！${NC}"
-                exit 0
-                ;;
-            *)
-                echo -e "${RED}无效选择，请重试${NC}"
-                sleep 1
-                ;;
-        esac
+            case $choice in
+                i|I)
+                    auto_install
+                    ;;
+                h|H)
+                    show_help
+                    ;;
+                q|Q)
+                    echo -e "${GREEN}👋 再见！${NC}"
+                    exit 0
+                    ;;
+                *)
+                    echo -e "${RED}无效选择，请重试${NC}"
+                    sleep 1
+                    ;;
+            esac
+        else
+            # screen 已安装，正常显示会话列表
+            show_sessions
+            read -p "请选择操作: " choice
+
+            case $choice in
+                [1-9])
+                    connect_session "${SESSION_MAP[$choice]}"
+                    ;;
+                a|A)
+                    show_all_sessions
+                    ;;
+                c|C)
+                    clean_duplicate_sessions
+                    sleep 2
+                    ;;
+                d|D)
+                    delete_all_sessions
+                    sleep 2
+                    ;;
+                e|E)
+                    edit_script
+                    ;;
+                i|I)
+                    auto_install
+                    ;;
+                u|U)
+                    auto_uninstall
+                    ;;
+                h|H)
+                    show_help
+                    ;;
+                q|Q)
+                    echo -e "${GREEN}👋 再见！${NC}"
+                    exit 0
+                    ;;
+                *)
+                    echo -e "${RED}无效选择，请重试${NC}"
+                    sleep 1
+                    ;;
+            esac
+        fi
     done
 }
 
