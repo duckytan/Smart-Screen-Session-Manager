@@ -1,0 +1,44 @@
+# 版本控制忽略文件
+# 确保私人版本不会被意外提交
+
+# 私人版本脚本 (包含敏感信息)
+server-setup-private.sh
+
+# 备份文件
+*.backup.*
+*.bak
+
+# 临时文件
+*.tmp
+*.temp
+
+# 凭据文件
+.env
+*.key
+*.pem
+*.p12
+*.pfx
+
+# 日志文件
+*.log
+logs/
+
+# 操作系统生成的文件
+.DS_Store
+Thumbs.db
+
+# 编辑器配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 包管理
+node_modules/
+__pycache__/
+*.pyc
+
+# 自定义配置
+config/local.yml
+secrets.yml

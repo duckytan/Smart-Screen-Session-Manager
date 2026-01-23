@@ -8,7 +8,7 @@
 # 简洁高效的Screen会话管理工具
 # 支持多用户协作、预设会话、简洁提示符
 #
-set -eo pipefail  # 移除 u 选项，避免未定义变量导致退出
+set -eo pipefail  # 启用严格模式：命令失败时退出、未定义变量时退出、管道失败时退出
 
 ################################################################################
 # 错误处理函数
@@ -29,11 +29,6 @@ fatal() {
     exit 1
 }
 
-cleanup() {
-    echo "执行清理操作..."
-}
-
-trap cleanup EXIT
 trap 'error "脚本被中断"' INT
 trap 'error "收到终止信号"' TERM
 
@@ -128,19 +123,83 @@ show_sessions() {
 }
 
 ################################################################################
+# 验证会话名称
+################################################################################
+validate_session_name() {
+    local name="$1"
+
+    # 检查是否为空
+    if [ -z "$name" ]; then
+        echo -e "${RED}❌ 会话名称不能为空${NC}"
+        return 1
+    fi
+
+    # 检查是否包含非法字符（允许字母、数字、连字符、下划线、空格）
+    if [[ ! "$name" =~ ^[a-zA-Z0-9._\-[:space:]]+$ ]]; then
+        echo -e "${RED}❌ 会话名称包含非法字符：只能包含字母、数字、点、下划线、连字符和空格${NC}"
+        return 1
+    fi
+
+    # 检查长度
+    if [ ${#name} -gt 50 ]; then
+        echo -e "${RED}❌ 会话名称过长（最大50个字符）${NC}"
+        return 1
+    fi
+
+    return 0
+}
+
+################################################################################
+# 检查数字输入是否有效
+################################################################################
+validate_numeric_input() {
+    local input="$1"
+    local min_value="$2"
+    local max_value="$3"
+
+    # 检查是否为空
+    if [ -z "$input" ]; then
+        echo -e "${RED}❌ 输入不能为空${NC}"
+        return 1
+    fi
+
+    # 检查是否为数字
+    if ! [[ "$input" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}❌ 请输入有效数字${NC}"
+        return 1
+    fi
+
+    # 检查是否在有效范围内
+    if [ "$input" -lt "$min_value" ] || [ "$input" -gt "$max_value" ]; then
+        echo -e "${RED}❌ 请输入 $min_value 到 $max_value 之间的数字${NC}"
+        return 1
+    fi
+
+    return 0
+}
+
+################################################################################
 # 检查并启用多用户模式
 ################################################################################
 ensure_multiuser_mode() {
     local session_name="$1"
 
     # 启用多用户模式
-    screen -S "$session_name" -X multiuser on 2>/dev/null || true
+    if screen -S "$session_name" -X multiuser on 2>/dev/null; then
+        echo -e "${GREEN}✓ 多用户模式已启用${NC}"
+    else
+        echo -e "${YELLOW}⚠️  无法启用多用户模式，但可以继续使用${NC}"
+    fi
 
     # 获取当前用户名
     local current_user=$(whoami)
 
     # 为当前用户添加权限
-    screen -S "$session_name" -X acladd "$current_user" 2>/dev/null || true
+    if screen -S "$session_name" -X acladd "$current_user" 2>/dev/null; then
+        echo -e "${GREEN}✓ 当前用户权限已添加${NC}"
+    else
+        echo -e "${YELLOW}⚠️  无法添加用户权限，但可以继续使用${NC}"
+    fi
 }
 
 ################################################################################
@@ -148,6 +207,12 @@ ensure_multiuser_mode() {
 ################################################################################
 connect_session() {
     local session_name="$1"
+
+    # 验证会话名称
+    if ! validate_session_name "$session_name"; then
+        echo -e "${RED}❌ 会话名称无效，请检查输入${NC}"
+        return 1
+    fi
 
     # 检查会话是否已存在
     if screen -list | grep -q "$session_name"; then
@@ -197,7 +262,13 @@ show_all_sessions() {
     done
 
     echo ""
-    read -p "请选择要连接的会话 (1-$((count-1))): " choice
+    local choice=$(safe_read "请选择要连接的会话 (1-$((count-1))): " "")
+
+    # 处理空输入或无效输入
+    if [ -z "$choice" ] || ! [[ "$choice" =~ ^[0-9]+$ ]]; then
+        echo -e "${YELLOW}无效选择，返回主菜单${NC}"
+        return
+    fi
 
     if [ "$choice" -ge 1 ] && [ "$choice" -lt $count ]; then
         local selected_session=$(echo "$sessions" | sed -n "${choice}p")
@@ -208,6 +279,8 @@ show_all_sessions() {
         ensure_multiuser_mode "$selected_session"
 
         exec screen -xR "$selected_session"
+    else
+        echo -e "${YELLOW}无效选择，返回主菜单${NC}"
     fi
 }
 
@@ -252,7 +325,7 @@ clean_duplicate_sessions() {
 ################################################################################
 delete_all_sessions() {
     echo -e "${RED}⚠️  确定要删除所有会话吗？此操作不可恢复！${NC}"
-    read -p "输入 'yes' 确认: " confirm
+    local confirm=$(safe_read "输入 'yes' 确认: " "no")
 
     if [ "$confirm" = "yes" ]; then
         echo -e "${RED}🗑️  正在删除所有会话...${NC}"
@@ -291,7 +364,7 @@ show_help() {
     echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    read -p "按 Enter 键继续..."
+    safe_read "按 Enter 键继续..."
 }
 
 ################################################################################
@@ -320,15 +393,72 @@ auto_install() {
     # 检查是否已配置自启动
     if grep -q "smart-screen.sh" ~/.bashrc 2>/dev/null; then
         echo -e "${YELLOW}⚠ 检测到已存在的自启动配置${NC}"
-        read -p "是否重新配置？(y/N): " -n 1 -r
-        echo ""
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
+        local confirm=$(safe_read "是否重新配置？(y/N): " "n")
+        if [[ $confirm =~ ^[Yy]$ ]]; then
             echo -e "${BLUE}正在删除旧配置...${NC}"
-            sed -i '/smart-screen.sh/,/^fi$/d' ~/.bashrc 2>/dev/null
+
+            # 检查权限
+            if [ ! -w ~/.bashrc ]; then
+                echo -e "${RED}❌ 没有写入 ~/.bashrc 的权限${NC}"
+                safe_read "按 Enter 键继续..."
+                return
+            fi
+
+            # 备份旧配置
+            if [ -f ~/.bashrc ]; then
+                local backup_file="$HOME/.bashrc.backup.$(date +%Y%m%d_%H%M%S)"
+                cp ~/.bashrc "$backup_file" 2>/dev/null
+                if [ $? -eq 0 ]; then
+                    echo -e "${GREEN}✓ 已备份旧配置到 $backup_file${NC}"
+                fi
+            fi
+
+            # 安全删除：使用与卸载相同的逻辑
+            local temp_file=$(mktemp)
+            local in_smart_screen_block=false
+            local block_depth=0
+
+            while IFS= read -r line; do
+                # 检测配置块开始
+                if [[ "$line" =~ "# Smart Screen Session Manager" ]]; then
+                    in_smart_screen_block=true
+                    block_depth=1
+                    continue
+                fi
+
+                # 如果在配置块内
+                if [ "$in_smart_screen_block" = true ]; then
+                    # 计算大括号嵌套深度
+                    if [[ "$line" =~ if\ \[ ]]; then
+                        ((block_depth++))
+                    elif [[ "$line" =~ ^[[:space:]]*fi[[:space:]]*$ ]]; then
+                        ((block_depth--))
+                        if [ $block_depth -eq 0 ]; then
+                            in_smart_screen_block=false
+                            continue
+                        fi
+                    fi
+                    continue
+                else
+                    # 输出非配置块的行
+                    echo "$line" >> "$temp_file"
+                fi
+            done < ~/.bashrc
+
+            # 替换原文件
+            mv "$temp_file" ~/.bashrc 2>/dev/null
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✓ 已删除旧配置${NC}"
+            else
+                echo -e "${RED}❌ 删除旧配置失败${NC}"
+                rm -f "$temp_file"
+                safe_read "按 Enter 键继续..."
+                return
+            fi
         else
             echo -e "${BLUE}跳过自动启动配置${NC}"
             echo ""
-            read -p "按 Enter 键继续..."
+            safe_read "按 Enter 键继续..."
             return
         fi
     fi
@@ -341,23 +471,62 @@ auto_install() {
     else
         echo -e "${YELLOW}⚠ screen 未安装，正在安装...${NC}"
 
+        # 检查是否有安装权限
+        local need_sudo=false
+        local install_cmd=""
+
+        if [ "$EUID" -ne 0 ]; then
+            # 非root用户，需要检查sudo
+            if command -v sudo &> /dev/null; then
+                if sudo -n true 2>/dev/null; then
+                    # 有sudo免密权限
+                    need_sudo=true
+                else
+                    echo -e "${YELLOW}检测到需要sudo权限，正在申请...${NC}"
+                    if sudo -v 2>/dev/null; then
+                        need_sudo=true
+                    else
+                        echo -e "${RED}❌ 无法获取sudo权限，请检查sudo配置${NC}"
+                        echo -e "${YELLOW}💡 提示：可以手动运行 'sudo apt-get install screen' 或 'sudo yum install screen'${NC}"
+                        safe_read "按 Enter 键继续..."
+                        return
+                    fi
+                fi
+            else
+                echo -e "${RED}❌ 需要root权限但系统中未安装sudo${NC}"
+                echo -e "${YELLOW}💡 提示：请手动安装screen或联系系统管理员${NC}"
+                safe_read "按 Enter 键继续..."
+                return
+            fi
+        fi
+
         if command -v apt-get &> /dev/null; then
             echo "使用 apt-get 安装..."
-            apt-get update -qq && apt-get install -y screen
+            if [ "$need_sudo" = true ]; then
+                sudo apt-get update -qq && sudo apt-get install -y screen
+            else
+                apt-get update -qq && apt-get install -y screen
+            fi
         elif command -v yum &> /dev/null; then
             echo "使用 yum 安装..."
-            yum install -y screen
+            if [ "$need_sudo" = true ]; then
+                sudo yum install -y screen
+            else
+                yum install -y screen
+            fi
         else
             echo -e "${RED}❌ 无法自动安装 screen，请手动安装${NC}"
-            read -p "按 Enter 键继续..."
+            safe_read "按 Enter 键继续..."
             return
         fi
 
+        # 验证安装结果
         if command -v screen &> /dev/null; then
             echo -e "${GREEN}✓ screen 安装成功${NC}"
         else
             echo -e "${RED}❌ screen 安装失败${NC}"
-            read -p "按 Enter 键继续..."
+            echo -e "${YELLOW}💡 提示：请检查网络连接或手动安装screen${NC}"
+            safe_read "按 Enter 键继续..."
             return
         fi
     fi
@@ -369,59 +538,68 @@ auto_install() {
     local script_dir="$(cd "$(dirname "$0")" && pwd)"
     local script_path="$script_dir/smart-screen.sh"
 
-    # 添加自启动配置到 ~/.bashrc
-    cat >> ~/.bashrc << 'BASHRC_EOF'
+    # 检查 ~/.bashrc 是否有写入权限
+    if [ -f ~/.bashrc ] && [ ! -w ~/.bashrc ]; then
+        echo -e "${RED}❌ ~/.bashrc 存在但没有写入权限${NC}"
+        echo -e "${YELLOW}💡 提示：请检查文件权限或手动添加配置${NC}"
+        safe_read "按 Enter 键继续..."
+        return
+    fi
 
-# ================================================================
-# Smart Screen Session Manager - Auto Start
-# ================================================================
-if [ -z "$STY" ] && [ -n "$PS1" ] && [ -z "$TMUX" ] && [ -z "$SMART_SCREEN_STARTED" ]; then
-    export SMART_SCREEN_STARTED=1
-    SCRIPT_PATH="SMART_SCREEN_SCRIPT_PATH"
-    if [ -x "$SCRIPT_PATH" ]; then
-        clear
-        echo ""
-        echo -e "\033[0;36m╔════════════════════════════════════════════════════════════╗\033[0m"
-        echo -e "\033[0;36m║\033[1;37m              欢迎使用 Smart Screen Session Manager           \033[0;36m║\033[0m"
-        echo -e "\033[0;36m╚════════════════════════════════════════════════════════════╝\033[0m"
-        echo ""
-        echo -e "\033[0;33m📋 预设会话：\033[0m"
-        echo -e "  \033[0;32m1-dev\033[0m  \033[0;32m2-test\033[0m  \033[0;32m3-prod\033[0m  \033[0;32m4-db\033[0m  \033[0;32m5-monitor\033[0m"
-        echo -e "  \033[0;32m6-backup\033[0m  \033[0;32m7-log\033[0m  \033[0;32m8-debug\033[0m  \033[0;32m9-research\033[0m"
-        echo ""
-        read -p "\033[0;33m是否启动Screen会话管理器？ [\033[0;32mY\033[0;33m/n]: \033[0m" -n 1 -r
-        echo ""
-        if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
-            echo ""
-            echo -e "\033[0;32m启动 Smart Screen Session Manager...\033[0m"
-            sleep 1
-            exec "$SCRIPT_PATH"
+    # 备份现有的 ~/.bashrc
+    if [ -f ~/.bashrc ]; then
+        local backup_file="$HOME/.bashrc.backup.$(date +%Y%m%d_%H%M%S)"
+        cp ~/.bashrc "$backup_file" 2>/dev/null
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓ 已备份 ~/.bashrc 到 $backup_file${NC}"
+        else
+            echo -e "${YELLOW}⚠️  备份 ~/.bashrc 失败，将继续尝试配置${NC}"
         fi
     fi
-fi
-BASHRC_EOF
 
-    # 替换脚本路径
-    sed -i "s|SMART_SCREEN_SCRIPT_PATH|$script_path|g" ~/.bashrc
+    # 添加自启动配置到 ~/.bashrc（静默启动，不显示提示）
+    echo "" >> ~/.bashrc
+    echo "# ================================================================ " >> ~/.bashrc
+    echo "# Smart Screen Session Manager - Auto Start (Silent Mode) " >> ~/.bashrc
+    echo "# Added on $(date)" >> ~/.bashrc
+    echo "# ================================================================ " >> ~/.bashrc
+    echo "if [ -z \"\$STY\" ] && [ -n \"\$PS1\" ] && [ -z \"\$TMUX\" ] && [ -z \"\$SMART_SCREEN_STARTED\" ]; then" >> ~/.bashrc
+    echo "    export SMART_SCREEN_STARTED=1" >> ~/.bashrc
+    echo "    SCRIPT_PATH=\"$script_path\"" >> ~/.bashrc
+    echo "    if [ -x \"\$SCRIPT_PATH\" ]; then" >> ~/.bashrc
+    echo "        # 静默启动，不显示提示" >> ~/.bashrc
+    echo "        exec \"\$SCRIPT_PATH\"" >> ~/.bashrc
+    echo "    fi" >> ~/.bashrc
+    echo "fi" >> ~/.bashrc
 
-    echo -e "${GREEN}✓ 自启动配置完成${NC}"
+    # 验证配置是否成功添加
+    if grep -q "Smart Screen Session Manager" ~/.bashrc 2>/dev/null; then
+        echo -e "${GREEN}✓ 自启动配置完成${NC}"
+    else
+        echo -e "${RED}❌ 自启动配置失败${NC}"
+        echo -e "${YELLOW}💡 提示：请检查 ~/.bashrc 权限或手动添加配置${NC}"
+        safe_read "按 Enter 键继续..."
+        return
+    fi
 
     echo ""
     echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║${WHITE}                  安装完成！                        ${GREEN}║${NC}"
     echo -e "${GREEN}╠════════════════════════════════════════════════════════════╣${NC}"
     echo -e "${GREEN}║${NC}                                                            ${GREEN}║${NC}"
-    echo -e "${GREEN}║${WHITE}  接下来的步骤：                                        ${GREEN}║${NC}"
+    echo -e "${GREEN}║${WHITE}  安装内容：                                            ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  ✓ 已安装 screen                                      ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  ✓ 已配置自启动（静默模式）                          ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}                                                            ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  1. 断开SSH连接重新登录                               ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  2. 登录时会自动提示是否启动会话管理器                 ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  3. 选择 Y 启动，或稍后手动运行:                       ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}      $script_path${GREEN}║${NC}"
+    echo -e "${GREEN}║${WHITE}  使用说明：                                            ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  • 下次SSH登录时会自动启动会话管理器                   ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  • 无需手动运行，登录即用                             ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  • 如需卸载，运行脚本选择 'u'                         ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}                                                            ${GREEN}║${NC}"
     echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    read -p "按 Enter 键继续..."
+    safe_read "按 Enter 键继续..."
 }
 
 ################################################################################
@@ -436,18 +614,72 @@ auto_uninstall() {
     echo -e "${RED}⚠️  此操作将删除自启动配置，但不会删除现有会话${NC}"
     echo -e "${YELLOW}注意：删除后需要手动运行脚本来启动会话管理器${NC}"
     echo ""
-    read -p "确认卸载自启动配置？(y/N): " -n 1 -r
-    echo ""
+    local confirm=$(safe_read "确认卸载自启动配置？(y/N): " "n")
 
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if [[ $confirm =~ ^[Yy]$ ]]; then
         echo -e "${YELLOW}正在删除自启动配置...${NC}"
 
-        # 删除 ~/.bashrc 中的配置
-        if grep -q "smart-screen.sh" ~/.bashrc 2>/dev/null; then
-            sed -i '/smart-screen.sh/,/^fi$/d' ~/.bashrc 2>/dev/null
+        # 检查 ~/.bashrc 是否有写入权限
+        if [ ! -w ~/.bashrc ]; then
+            echo -e "${RED}❌ 没有写入 ~/.bashrc 的权限${NC}"
+            echo -e "${YELLOW}💡 提示：请检查文件权限${NC}"
+            safe_read "按 Enter 键继续..."
+            return
+        fi
+
+        # 备份当前的 ~/.bashrc
+        if [ -f ~/.bashrc ]; then
+            local backup_file="$HOME/.bashrc.backup.$(date +%Y%m%d_%H%M%S)"
+            cp ~/.bashrc "$backup_file" 2>/dev/null
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✓ 已备份 ~/.bashrc 到 $backup_file${NC}"
+            else
+                echo -e "${YELLOW}⚠️  备份 ~/.bashrc 失败，将继续尝试卸载${NC}"
+            fi
+        fi
+
+        # 安全删除配置：只删除 Smart Screen Session Manager 相关的配置块
+        local temp_file=$(mktemp)
+        local in_smart_screen_block=false
+        local block_depth=0
+
+        while IFS= read -r line; do
+            # 检测配置块开始
+            if [[ "$line" =~ "# Smart Screen Session Manager" ]]; then
+                in_smart_screen_block=true
+                block_depth=1
+                continue
+            fi
+
+            # 如果在配置块内
+            if [ "$in_smart_screen_block" = true ]; then
+                # 计算大括号嵌套深度
+                if [[ "$line" =~ if\ \[ ]]; then
+                    ((block_depth++))
+                elif [[ "$line" =~ ^[[:space:]]*fi[[:space:]]*$ ]]; then
+                    ((block_depth--))
+                    if [ $block_depth -eq 0 ]; then
+                        # 配置块结束，不输出这个 fi
+                        in_smart_screen_block=false
+                        continue
+                    fi
+                fi
+                continue  # 跳过配置块内的所有行
+            else
+                # 输出非配置块的行
+                echo "$line" >> "$temp_file"
+            fi
+        done < ~/.bashrc
+
+        # 替换原文件
+        mv "$temp_file" ~/.bashrc 2>/dev/null
+        if [ $? -eq 0 ]; then
             echo -e "${GREEN}✓ 已删除 ~/.bashrc 中的自启动配置${NC}"
         else
-            echo -e "${YELLOW}未找到自启动配置${NC}"
+            echo -e "${RED}❌ 删除配置文件失败${NC}"
+            rm -f "$temp_file"
+            safe_read "按 Enter 键继续..."
+            return
         fi
 
         # 删除环境变量
@@ -473,7 +705,7 @@ auto_uninstall() {
     fi
 
     echo ""
-    read -p "按 Enter 键继续..."
+    safe_read "按 Enter 键继续..."
 }
 
 ################################################################################
@@ -492,19 +724,18 @@ check_screen_available() {
 safe_read() {
     local prompt="$1"
     local default_value="${2:-}"
+    local result=""
 
-    if [ -t 0 ]; then
-        # 交互式环境
-        read -r "$prompt" choice
+    if [ -t 0 ] && [ -t 1 ]; then
+        # 交互式环境：正常读取用户输入
+        read -r "$prompt" result
     else
-        # 非交互式环境，使用默认值
-        echo -n "$prompt"
-        read -r choice
-        # 如果没有输入，使用默认值
-        if [ -z "$choice" ]; then
-            choice="$default_value"
-        fi
+        # 非交互式环境：使用默认值，静默处理
+        echo -n "$prompt" >&2  # 提示信息输出到stderr
+        result="$default_value"
     fi
+
+    echo "$result"
 }
 
 ################################################################################
@@ -572,10 +803,7 @@ main() {
             echo -e "  [${GREEN}q${NC}] ${ICON_QUIT} 退出"
             echo ""
 
-            # 临时禁用错误检查
-            set +e
-            read -p "请选择操作: " choice
-            set -e
+            local choice=$(safe_read "请选择操作: " "q")
 
             case $choice in
                 i|I)
@@ -601,14 +829,22 @@ main() {
             # screen 已安装，正常显示会话列表
             show_sessions
 
-            # 临时禁用错误检查
-            set +e
-            read -p "请选择操作: " choice
-            set -e
+            local choice=$(safe_read "请选择操作: " "q")
 
             case $choice in
                 [1-9])
-                    connect_session "${SESSION_MAP[$choice]}"
+                    if validate_numeric_input "$choice" 1 9; then
+                        local session_name="${SESSION_MAP[$choice]}"
+                        if connect_session "$session_name"; then
+                            # 连接成功，不会返回到这里
+                            :
+                        else
+                            # 连接失败，暂停一下让用户看到错误信息
+                            sleep 2
+                        fi
+                    else
+                        sleep 2
+                    fi
                     ;;
                 a|A)
                     show_all_sessions

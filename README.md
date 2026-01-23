@@ -52,17 +52,19 @@
 
 ### 🎯 一键安装（最简单）
 
-**复制以下命令到终端并运行：**
+**一键安装（推荐方式）：**
 
 ```bash
-curl -fsSL https://github.com/duckytan/Smart-Screen-Session-Manager/releases/download/2.0test/smart-screen.sh | bash
+curl -fsSL https://raw.githubusercontent.com/duckytan/Smart-Screen-Session-Manager/main/smart-screen.sh -o smart-screen.sh && chmod +x smart-screen.sh && ./smart-screen.sh
 ```
 
-**或者使用 wget：**
+**或者使用管道执行（不推荐）：**
 
 ```bash
-wget -qO- https://github.com/duckytan/Smart-Screen-Session-Manager/releases/download/2.0test/smart-screen.sh | bash
+curl -fsSL https://raw.githubusercontent.com/duckytan/Smart-Screen-Session-Manager/main/smart-screen.sh | bash
 ```
+
+**⚠️ 安全提醒：建议使用第一种方式，先下载再检查内容，然后执行。**
 
 **安装完成后，脚本会自动运行，后续操作：**
 
