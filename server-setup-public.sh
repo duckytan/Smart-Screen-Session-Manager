@@ -168,15 +168,47 @@ install_github_cli() {
     fi
 
     info "安装 GitHub CLI..."
-    if ! curl -fsSL https://cli.github.com/packages/rpm/gh.repo > /etc/yum.repos.d/gh.repo; then
-        error "下载 GitHub CLI 仓库配置失败"
+
+    # 尝试使用包管理器安装
+    if command -v yum &>/dev/null; then
+        # CentOS/RHEL/Fedora
+        info "尝试使用 yum 安装 GitHub CLI..."
+        if yum install -y gh 2>/dev/null; then
+            success "GitHub CLI 安装完成"
+            return 0
+        fi
+    elif command -v apt-get &>/dev/null; then
+        # Ubuntu/Debian
+        info "使用 apt 安装 GitHub CLI..."
+        if apt-get update >/dev/null 2>&1 && apt-get install -y gh 2>/dev/null; then
+            success "GitHub CLI 安装完成"
+            return 0
+        fi
+    elif command -v brew &>/dev/null; then
+        # macOS
+        info "使用 brew 安装 GitHub CLI..."
+        if brew install gh 2>/dev/null; then
+            success "GitHub CLI 安装完成"
+            return 0
+        fi
+    elif command -v snap &>/dev/null; then
+        # Linux with snap
+        info "使用 snap 安装 GitHub CLI..."
+        if snap install gh --classic 2>/dev/null; then
+            success "GitHub CLI 安装完成"
+            return 0
+        fi
     fi
 
-    if ! yum install -y gh; then
-        error "GitHub CLI 安装失败"
-    fi
-
-    success "GitHub CLI 安装完成"
+    # 如果自动安装失败，给出提示
+    warning "无法自动安装 GitHub CLI"
+    info "请手动安装 GitHub CLI："
+    echo -e "${WHITE}  • Ubuntu/Debian: ${CYAN}sudo apt update && sudo apt install gh${NC}"
+    echo -e "${WHITE}  • CentOS/RHEL/Fedora: ${CYAN}sudo yum install gh${NC} 或 ${CYAN}sudo dnf install gh${NC}"
+    echo -e "${WHITE}  • macOS: ${CYAN}brew install gh${NC}"
+    echo -e "${WHITE}  • 或访问官方页面: ${CYAN}https://cli.github.com/manual/installation${NC}"
+    echo ""
+    success "跳过 GitHub CLI 安装，继续其他步骤..."
 }
 
 # 配置环境变量（公开版本）
