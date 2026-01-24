@@ -358,8 +358,8 @@ main() {
         echo -e "${WHITE}│${NC}  重连后直接执行:                                     ${WHITE}│${NC}"
         echo -e "${WHITE}│${NC}    source ~/.bashrc && nvm use 20                  ${WHITE}│${NC}"
         echo -e "${WHITE}│${NC}                                                    ${WHITE}│${NC}"
-        echo -e "${WHITE}│${NC}  启动 Claude Code:                                  ${WHITE}│${NC}"
-        echo -e "${WHITE}│${NC}    claude                                          ${WHITE}│${NC}"
+        echo -e "${WHITE}│${NC}  安装 Claude Code:                                  ${WHITE}│${NC}"
+        echo -e "${WHITE}│${NC}    npx zcf                                          ${WHITE}│${NC}"
         echo -e "${WHITE}└────────────────────────────────────────────────────────┘${NC}"
     else
         error "安装验证失败，请检查上述错误信息"

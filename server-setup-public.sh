@@ -423,8 +423,8 @@ main() {
         echo -e "${WHITE}│${NC}  2. 重载配置:                                   ${WHITE}│${NC}"
         echo -e "${WHITE}│${NC}     source ~/.bashrc && nvm use 20                ${WHITE}│${NC}"
         echo -e "${WHITE}│${NC}                                                    ${WHITE}│${NC}"
-        echo -e "${WHITE}│${NC}  3. 启动 Claude Code:                             ${WHITE}│${NC}"
-        echo -e "${WHITE}│${NC}     claude                                      ${WHITE}│${NC}"
+        echo -e "${WHITE}│${NC}  3. 安装 Claude Code:                             ${WHITE}│${NC}"
+        echo -e "${WHITE}│${NC}     npx zcf                                      ${WHITE}│${NC}"
         echo -e "${WHITE}└────────────────────────────────────────────────────────┘${NC}"
     else
         error "安装验证失败，请检查上述错误信息"
