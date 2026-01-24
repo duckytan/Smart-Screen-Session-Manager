@@ -801,24 +801,12 @@ safe_read() {
     local default_value="${2:-}"
     local result=""
 
-    if [ -t 0 ] && [ -t 1 ]; then
-        # 交互式环境：正常读取用户输入
-        read -r -p "$prompt" result
-        # 如果用户输入为空，使用默认值
-        if [ -z "$result" ] && [ -n "$default_value" ]; then
-            result="$default_value"
-        fi
-    else
-        # 非交互式环境：只对特定默认值使用默认值，避免自动退出
-        if [ -n "$default_value" ] && [ "$default_value" != "q" ]; then
-            result="$default_value"
-        else
-            # 对于"q"或其他默认退出值，不使用默认值，提示用户
-            echo -e "${RED}⚠️  检测到非交互式环境${NC}" >&2
-            echo -e "${YELLOW}💡 提示：请使用命令行参数直接操作${NC}" >&2
-            echo -e "${WHITE}例如: $0 1 (进入会话1) | $0 h (查看帮助) | $0 a (显示所有会话)${NC}" >&2
-            result=""
-        fi
+    # 始终使用交互式模式
+    read -r -p "$prompt" result
+
+    # 如果用户输入为空，使用默认值
+    if [ -z "$result" ] && [ -n "$default_value" ]; then
+        result="$default_value"
     fi
 
     echo "$result"
