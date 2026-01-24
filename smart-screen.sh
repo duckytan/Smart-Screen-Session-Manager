@@ -828,35 +828,35 @@ handle_command_line_args() {
                 ;;
             a|A)
                 show_all_sessions
-                exit 0
+                return 0
                 ;;
             c|C)
                 clean_duplicate_sessions
-                exit 0
+                return 0
                 ;;
             d|D)
                 delete_all_sessions
-                exit 0
+                return 0
                 ;;
             e|E)
                 edit_script
-                exit 0
+                return 0
                 ;;
             i|I)
                 auto_install
-                exit 0
+                return 0
                 ;;
             u|U)
                 auto_uninstall
-                exit 0
+                return 0
                 ;;
             h|H)
                 show_help
-                exit 0
+                return 0
                 ;;
             q|Q)
                 echo -e "${GREEN}👋 再见！${NC}"
-                exit 0
+                return 0
                 ;;
             *)
                 echo -e "${RED}无效参数: $arg${NC}"
@@ -904,7 +904,7 @@ main() {
                     ;;
                 q|Q)
                     echo -e "${GREEN}👋 再见！${NC}"
-                    exit 0
+                    break
                     ;;
                 "")
                     echo -e "${YELLOW}请输入选择！${NC}"
@@ -961,7 +961,7 @@ main() {
                     ;;
                 q|Q)
                     echo -e "${GREEN}👋 再见！${NC}"
-                    exit 0
+                    break
                     ;;
                 "")
                     echo -e "${YELLOW}请输入选择！${NC}"
