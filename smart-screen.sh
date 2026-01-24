@@ -665,6 +665,89 @@ auto_install() {
     fi
 
     echo ""
+    echo -e "${YELLOW}创建全局命令...${NC}"
+
+    # 创建软链接到 /usr/local/bin/sm
+    local symlink_path="/usr/local/bin/sm"
+    local need_sudo_for_symlink=false
+
+    # 检查当前用户权限
+    if [ "$EUID" -eq 0 ]; then
+        # root用户可以直接创建
+        need_sudo_for_symlink=false
+    elif [ -w "$(dirname "$symlink_path")" ]; then
+        # 有权限直接创建
+        need_sudo_for_symlink=false
+    else
+        # 需要sudo权限
+        need_sudo_for_symlink=true
+    fi
+
+    # 如果软链接已存在，询问是否覆盖
+    if [ -L "$symlink_path" ] || [ -e "$symlink_path" ]; then
+        local overwrite_confirm=$(safe_read "检测到已存在的 $symlink_path，是否覆盖？(y/N): " "n")
+        if [[ $overwrite_confirm =~ ^[Yy]$ ]]; then
+            if [ "$need_sudo_for_symlink" = true ]; then
+                sudo rm -f "$symlink_path" 2>/dev/null || {
+                    echo -e "${YELLOW}⚠️  删除旧软链接失败，尝试创建新软链接...${NC}"
+                    sudo ln -sf "$script_path" "$symlink_path" 2>/dev/null || {
+                        echo -e "${YELLOW}⚠️  创建软链接失败${NC}"
+                        echo -e "${YELLOW}💡 提示：可以手动运行 'sudo ln -sf $script_path /usr/local/bin/sm'${NC}"
+                    }
+                }
+            else
+                rm -f "$symlink_path" 2>/dev/null || {
+                    echo -e "${YELLOW}⚠️  删除旧软链接失败，尝试创建新软链接...${NC}"
+                    ln -sf "$script_path" "$symlink_path" 2>/dev/null || {
+                        echo -e "${YELLOW}⚠️  创建软链接失败${NC}"
+                        echo -e "${YELLOW}💡 提示：可以手动运行 'ln -sf $script_path /usr/local/bin/sm'${NC}"
+                    }
+                }
+            fi
+        else
+            echo -e "${BLUE}跳过软链接创建${NC}"
+        fi
+    fi
+
+    # 如果软链接不存在，创建它
+    if [ ! -L "$symlink_path" ] && [ ! -e "$symlink_path" ]; then
+        if [ "$need_sudo_for_symlink" = true ]; then
+            # 使用sudo创建软链接
+            if sudo ln -sf "$script_path" "$symlink_path" 2>/dev/null; then
+                echo -e "${GREEN}✓ 全局命令 'sm' 创建成功${NC}"
+                echo -e "${GREEN}✓ 现在可在任何地方使用 'sm' 命令${NC}"
+            else
+                echo -e "${YELLOW}⚠️  创建软链接失败${NC}"
+                echo -e "${YELLOW}💡 提示：可以手动运行 'sudo ln -sf $script_path /usr/local/bin/sm'${NC}"
+            fi
+        else
+            # 直接创建软链接
+            if ln -sf "$script_path" "$symlink_path" 2>/dev/null; then
+                echo -e "${GREEN}✓ 全局命令 'sm' 创建成功${NC}"
+                echo -e "${GREEN}✓ 现在可在任何地方使用 'sm' 命令${NC}"
+            else
+                echo -e "${YELLOW}⚠️  创建软链接失败${NC}"
+                echo -e "${YELLOW}💡 提示：可以手动运行 'ln -sf $script_path /usr/local/bin/sm'${NC}"
+            fi
+        fi
+    else
+        # 软链接已存在
+        echo -e "${GREEN}✓ 全局命令 'sm' 已存在${NC}"
+        # 验证软链接是否指向正确的脚本
+        if [ -L "$symlink_path" ]; then
+            local current_target=$(readlink -f "$symlink_path" 2>/dev/null)
+            local script_full_path=$(readlink -f "$script_path" 2>/dev/null)
+            if [ "$current_target" = "$script_full_path" ]; then
+                echo -e "${GREEN}✓ 软链接指向正确${NC}"
+            else
+                echo -e "${YELLOW}⚠️  软链接指向其他脚本${NC}"
+                echo -e "${YELLOW}💡 提示：当前指向: $current_target${NC}"
+                echo -e "${YELLOW}💡 提示：应指向: $script_path${NC}"
+            fi
+        fi
+    fi
+
+    echo ""
     echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║${WHITE}                  安装完成！                        ${GREEN}║${NC}"
     echo -e "${GREEN}╠════════════════════════════════════════════════════════════╣${NC}"
@@ -672,11 +755,13 @@ auto_install() {
     echo -e "${GREEN}║${WHITE}  安装内容：                                            ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}  ✓ 已安装 screen                                      ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}  ✓ 已配置自启动（静默模式）                          ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  ✓ 已创建全局命令 'sm'                               ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}                                                            ${GREEN}║${NC}"
-    echo -e "${GREEN}║${WHITE}  使用说明：                                            ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  • 下次SSH登录时会自动启动会话管理器                   ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  • 无需手动运行，登录即用                             ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  • 如需卸载，运行脚本选择 'u'                         ${GREEN}║${NC}"
+    echo -e "${GREEN}║${WHITE}  使用方法：                                            ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  • 使用命令: sm (任何目录)                           ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  • 直接运行: sm 1-9 (连接会话)                       ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  • 自动启动: SSH登录即用                             ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  • 卸载运行: sm u                                     ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}                                                            ${GREEN}║${NC}"
     echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
